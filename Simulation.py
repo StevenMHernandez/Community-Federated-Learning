@@ -1,10 +1,13 @@
 from Community import Community
 from Node import Node
-
+from Utilities import read
 
 class Simulation:
     @staticmethod
     def main():
+        #Test for CSV reader
+        #read('SampleCSV.csv')
+
         # Initialize communities and nodes
         nodes = []
         for c_i in range(1, 10):
