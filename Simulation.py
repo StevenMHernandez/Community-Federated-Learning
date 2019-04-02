@@ -1,12 +1,22 @@
 from Community import Community
 from Node import Node
-from Utilities import read
+from FileUtilities import *
 
 class Simulation:
     @staticmethod
     def main():
-        #Test for CSV reader
-        #read('SampleCSV.csv')
+        #Testing reading and splitting data.
+        data = loadData('SampleCSV.csv')
+
+        print("Standard Distribute Data:")
+        distributedData = distibuteData(data, 2)
+        for communityData in distributedData:
+            print(" Community Data: " + str(communityData))
+
+        print("Lazy Uniform Distribute Data")
+        lazyUniformDistributedData = lazyUniformDistributeData(data, 2)
+        for communityData in lazyUniformDistributedData:
+            print(" Community Data: " + str(communityData))
 
         # Initialize communities and nodes
         nodes = []
