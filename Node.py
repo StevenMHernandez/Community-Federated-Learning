@@ -7,10 +7,8 @@ class Node:
     y = 0.0
     r = 50.0
 
-    def __init__(self, identifier, c):
-        self.community = c
+    def __init__(self, identifier):
         self.identifier = identifier
-        (self.x, self.y) = c.getRandomLocationIn()
         print(str(self.x) + "," + str(self.y))
 
     def sees(self, neighbor):

@@ -1,4 +1,4 @@
-# Community-centric Federated Learning
+# Federated Learning for Mobile Nodes
 
 Simply run the simulation with:
 
