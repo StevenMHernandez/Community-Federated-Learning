@@ -15,22 +15,10 @@ class Node:
     def sees(self, neighbor):
         return math.sqrt(pow(self.x - neighbor.x, 2) + pow(self.y - neighbor.y, 2)) < self.r
 
-
     def random_initial_location(self):
         # TODO
-        return (0,1)
+        return (0, 1)
+
     def move(self):
-        # TODO
-        pass
-
-    def learn(self):
-        # TODO
-        pass
-
-    def share(self, neighbor):
-        # TODO
-        pass
-
-    def evaluate(self):
         # TODO
         pass

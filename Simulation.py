@@ -18,8 +18,12 @@ from Node import Node
 
 # Maximum number of nodes (datasets can have upwards of 1000s of clients, and thus 1000s of nodes would be created)
 NODE_LIMIT = 25
-# Number of time instances to run the simulation for before evaluation
-SIMULATION_TIME = 10
+# Number of rounds that should occur @SERVER
+SIMULATION_NUM_ROUNDS = 10
+# Number of time instances that should occur per round
+SIMULATION_NUM_T_PER_ROUND = 10
+# Number of coordinator nodes to select per round
+NUM_COORDINATOR_NODES = 4
 
 
 class Simulation:
@@ -35,21 +39,40 @@ class Simulation:
         for n_i in node_ids:
             nodes.append(Node(n_i))
 
-        # Run simulation
-        for t in range(1, SIMULATION_TIME + 1):
-            print("t: " + str(t))
-            for n in nodes:
-                n.move()
-                n.learn()
+        # Run simulation a given number of rounds
+        for round_num in range(1, SIMULATION_NUM_ROUNDS + 1):
+            # Select random nodes to be coordinators
+            coordinators = nodes[0:NUM_COORDINATOR_NODES]
 
-            for n1 in nodes:
-                for n2 in nodes:
-                    if n1 != n2 and n1.sees(n2):
-                        print(str(n1.identifier) + " sees " + str(n2.identifier))
-                        n1.share(n2)
+            nodes_seen_by_coordinator = {}
 
-        for n in nodes:
-            n.evaluate()
+            for t in range(1, SIMULATION_NUM_T_PER_ROUND + 1):
+                # Move all nodes once
+                for n in nodes:
+                    n.move()
+
+                # Check if any nodes have been seen by the coordinators
+                for c in coordinators:
+                    for n in nodes:
+                        if c != n and c.sees(n):
+                            print(str(c.identifier) + " sees " + str(n.identifier))
+                            if c not in nodes_seen_by_coordinator:
+                                nodes_seen_by_coordinator[c] = []
+                            nodes_seen_by_coordinator[c].append(n)
+
+            # For all nodes seen by coordinator for a given round
+            # learn together
+            for c in coordinators:
+                if c in nodes_seen_by_coordinator:
+                    print("Round {}, coordinator {} learns from [{}]".format(round_num, c.identifier, ",".join(map(lambda x: x.identifier, nodes_seen_by_coordinator[c]))))
+                    for n in nodes_seen_by_coordinator[c]:
+                        # TODO: federated learning (coordinator from mobile nodes)
+                        pass
+
+            # Now that the round is completed, we share the models from the coordinators to the SERVER for averaging.
+            # TODO: federated learning (SERVER from coordinators)
+
+        # TODO: Evaluation
 
     @staticmethod
     def preprocess(dataset):
