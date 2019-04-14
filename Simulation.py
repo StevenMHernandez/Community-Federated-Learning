@@ -28,6 +28,19 @@ SIMULATION_NUM_T_PER_ROUND = 10
 # Number of coordinator nodes to select per round
 NUM_COORDINATOR_NODES = 1
 
+#
+# Node Movement Variables
+#
+REGION_WIDTH = 100
+REGION_HEIGHT = 100
+TRANSMISSION_RADIUS = 10
+MIN_SPEED = 0.1
+MAX_SPEED = 1
+MIN_PAUSE = 1
+MAX_PAUSE = 5
+MIN_TRAVEL = 1
+MAX_TRAVEL = SIMULATION_NUM_ROUNDS * SIMULATION_NUM_T_PER_ROUND
+
 
 class Simulation:
     @staticmethod
@@ -42,7 +55,7 @@ class Simulation:
             random.shuffle(node_ids)
             node_ids = node_ids[:NODE_LIMIT]
         for n_i in node_ids:
-            nodes.append(Node(n_i))
+            nodes.append(Node(n_i, TRANSMISSION_RADIUS, REGION_HEIGHT, REGION_WIDTH, MIN_SPEED, MAX_SPEED, MIN_PAUSE, MAX_PAUSE, MIN_TRAVEL, MAX_TRAVEL))
         sample_batch = Simulation.create_sample_batch(train)
 
         # Create model graph
@@ -73,6 +86,7 @@ class Simulation:
                 # Move all nodes once
                 for n in nodes:
                     n.move()
+                    # print(n.identifier, n.x, n.y)
 
                 # Check if any nodes have been seen by the coordinators
                 for c in coordinators:

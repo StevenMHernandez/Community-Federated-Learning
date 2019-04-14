@@ -2,25 +2,24 @@ import math
 import random
 import enum
 
-#
-# Sample of what my main method in the Simulation class looked like is at the end of this file!
-#
 
 # printEnabled - Function to control all print statements in Node.py
 #                Set printStatementsEnabled = False to disable print statements.
 #                   If disabled, only the exportResult method will print the resulting file name when called.
 def printEnabled():
-    printStatementsEnabled = True
+    printStatementsEnabled = False
     return printStatementsEnabled
+
 
 # Enum to give nodes easy status setting/checking.
 class NodeStatus(enum.Enum):
-    traveling = 1   # Default.
-    paused = 2      # Temporary status.
+    traveling = 1  # Default.
+    paused = 2  # Temporary status.
+
 
 class Node:
     # Self-explanatory variables.
-    id = 0
+    identifier = 0
     x = 0.0
     y = 0.0
     angle = 0.0
@@ -44,8 +43,9 @@ class Node:
     regionHeight = 0
     regionWidth = 0
 
-    def __init__(self, id, transmissionRadius, regionLength, regionWidth, minSpeed, maxSpeed, minPause, maxPause, minTravel, maxTravel):
-        self.id = id
+    def __init__(self, id, transmissionRadius, regionLength, regionWidth, minSpeed, maxSpeed, minPause, maxPause,
+                 minTravel, maxTravel):
+        self.identifier = id
         self.r = transmissionRadius
         (self.regionHeight, self.regionWidth) = regionLength, regionWidth
         (self.x, self.y) = self.getRandomLocation()
@@ -70,13 +70,15 @@ class Node:
     # initializeNodes - Returns a list of nodes with all values initialized.
     #                   Logs will be printed to the console of all parameters set.
     def initializeNodes(numberNodes, transmissionRadius,
-                                     regionLength, regionWidth,
-                                     minSpeed, maxSpeed,
-                                     minPause, maxPause,
-                                     minTravel, maxTravel):
+                        regionLength, regionWidth,
+                        minSpeed, maxSpeed,
+                        minPause, maxPause,
+                        minTravel, maxTravel):
         nodes = []
-        for id in range(0, numberNodes):
-            nodes.append(Node(id, transmissionRadius, regionLength, regionWidth, minSpeed, maxSpeed, minPause, maxPause, minTravel, maxTravel))
+        for identifier in range(0, numberNodes):
+            nodes.append(
+                Node(identifier, transmissionRadius, regionLength, regionWidth, minSpeed, maxSpeed, minPause, maxPause,
+                     minTravel, maxTravel))
         return nodes
 
     # moveNodes - Takes array of nodes as a parameter, updates each node's position and status accordingly.
@@ -110,12 +112,12 @@ class Node:
                         communicationStringList.append(communicationString)
                         if printEnabled():
                             print("Communication: time=" + str(currentTime)
-                                                + ", id=" + str(nodeOne.id)
-                                                + ", id=" + str(nodeTwo.id)
-                                                + ", distance=" + str("%.2f" % distance)
-                                                + ", transmissionRadius=" + str(nodeOne.transmissionRadius)
-                                                + ", regionSize=" + str(nodeOne.regionHeight) + "x" + str(nodeOne.regionWidth)
-                                                + ", communication=True")
+                                  + ", id=" + str(nodeOne.id)
+                                  + ", id=" + str(nodeTwo.id)
+                                  + ", distance=" + str("%.2f" % distance)
+                                  + ", transmissionRadius=" + str(nodeOne.transmissionRadius)
+                                  + ", regionSize=" + str(nodeOne.regionHeight) + "x" + str(nodeOne.regionWidth)
+                                  + ", communication=True")
                     else:
                         if printEnabled():
                             print("Communication: time=" + str(currentTime)
@@ -145,14 +147,11 @@ class Node:
         (self.initialPause, self.remainingPause) = self.setPause()
         (self.initialTravelTime, self.remainingTravelTime) = self.setTravel()
         if printEnabled():
-            print("Randomize: id=" + str(self.id)
+            print("Randomize: id=" + str(self.identifier)
                   + ", angle=" + str("%.2f" % self.angle)
                   + ", speed=" + str(self.speed)
                   + ", pause=" + str(self.initialPause)
                   + ", travel=" + str(self.initialTravelTime))
-
-    # My naming of functions was atrocious here, but I was out of ideas.
-    # Maybe refactor these later...
 
     # pauseStatus - Sets the node this function was called on to "pause" status.
     def pauseStatus(self):
@@ -186,15 +185,13 @@ class Node:
         else:
             return False
 
-    # These method names below aren't so bad... Spare these lol
-
     # setAngle - Sets the angle of travel for the node this function was called on.
     def setAngle(self):
         return random.uniform(0, math.pi)
 
     # setSpeed = Sets the speed of the node this function was called on.
     def setSpeed(self):
-        return random.randint(self.minSpeed, self.maxSpeed)
+        return random.random() * (self.maxSpeed - self.minSpeed) + self.minSpeed
 
     # setPause - Returns a randomly generated integer between the min and max pause time.
     #            This function specifically returns two copies of the randomPause variable.
@@ -233,8 +230,8 @@ class Node:
     # determineLinesIntersectionPoint - Given two lines in the format [ [ x, y ], [ x, y ] ], [ [ x, y ], [ x, y ] ]
     #                                   it returns the point in which the two lines intersect.
     def determineLinesIntersectionPoint(self, line1, line2):
-        #print("Line1: " + str(line1))
-        #print("Line2: " + str(line2))
+        # print("Line1: " + str(line1))
+        # print("Line2: " + str(line2))
 
         xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
         ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])  # Typo was here
@@ -262,18 +259,17 @@ class Node:
         for intersection in intersections:
             intersectionDistanceMap.append([intersection, math.hypot(intersection[0] - x, intersection[1] - y)])
 
-        #print("IntersectionDistanceMap: " + str(intersectionDistanceMap))
+        # print("IntersectionDistanceMap: " + str(intersectionDistanceMap))
 
         bestIntersection = intersectionDistanceMap[0][0]
         bestLength = intersectionDistanceMap[0][1]
         for intersection in intersectionDistanceMap:
-            #print("BestIntersectionLength=" + str(bestLength) + ", IntersectionLength=" + str(intersection[1]))
+            # print("BestIntersectionLength=" + str(bestLength) + ", IntersectionLength=" + str(intersection[1]))
             if intersection[1] < bestLength:
                 bestIntersection = intersection[0]
                 bestLength = intersection[1]
 
         return bestIntersection
-
 
     # determineBorderIntersection - This function returns the point on the border in which the node's current path
     #                               intersects with the simulation region's border.
@@ -299,18 +295,18 @@ class Node:
 
         for border in borders:
             intersection = self.determineLinesIntersectionPoint(path, border)
-            #print("Intersection: " + str(intersection))
+            # print("Intersection: " + str(intersection))
             if self.exists(intersection[0], intersection[1]):
-                #print("Intersection exists!")
+                # print("Intersection exists!")
                 intersections.append(intersection)
-            #else:
-                #print("Intersection doesn't exist!")
+            # else:
+            # print("Intersection doesn't exist!")
 
         # Now, pick the intersection closest to where the node would
         # have ended up if it didn't want to stop at the border.
         finalIntersection = self.findClosestIntersection(intersections, x2, y2)
 
-        #print("Final Intersection: " + str(finalIntersection))
+        # print("Final Intersection: " + str(finalIntersection))
 
         return finalIntersection[0], finalIntersection[1]
 
@@ -329,7 +325,7 @@ class Node:
         # Check if the new points are within the region
         if self.exists(newX, newY):
             if printEnabled():
-                print("Move: id=" + str(self.id)
+                print("Move: id=" + str(self.identifier)
                       + ", x=" + str("%.2f" % self.x)
                       + ", y=" + str("%.2f" % self.y)
                       + ", speed=" + str(self.speed)
@@ -343,7 +339,7 @@ class Node:
             # Node also needs to be set to "paused" and randomize its traveling parameters
             newX, newY = self.determineBorderIntersection(self.x, self.y, newX, newY)
             if printEnabled():
-                print("Move: id=" + str(self.id)
+                print("Move: id=" + str(self.identifier)
                       + ", x=" + str("%.2f" % self.x)
                       + ", y=" + str("%.2f" % self.y)
                       + ", speed=" + str(self.speed)
@@ -359,7 +355,7 @@ class Node:
 
     # move - This function does several things...
     #        It first checks if the node is paused and decrements its counter or
-    #        transitions it to traveling is its pause timer is up.
+    #        transitions it to traveling if its pause timer is up.
     #        If the node isn't paused, it simply calculates a new position on the node's path,
     #        and tries to move the node.
     #        If the new position is outside of the simulation, the node currently is set to pause
@@ -368,8 +364,8 @@ class Node:
         if self.status == NodeStatus.paused and self.pauseRemaining():
             self.decrementRemainingPause()
             if printEnabled():
-                print("Pause: id=" + str(self.id)
-                        + ", pauseRemaining=" + str(self.remainingPause))
+                print("Pause: id=" + str(self.identifier)
+                      + ", pauseRemaining=" + str(self.remainingPause))
             return
 
         if self.status == NodeStatus.paused and not self.pauseRemaining():
@@ -377,7 +373,7 @@ class Node:
             self.randomizeMovementParameters()
             self.moveWithoutTimePenalty()
             if printEnabled():
-                print("Transition: id=" + str(self.id))
+                print("Transition: id=" + str(self.identifier))
             return
 
         angleInRadians = math.radians(self.angle)
@@ -391,7 +387,7 @@ class Node:
         # Check if the new points are within the region
         if self.exists(newX, newY) and self.travelRemaining() and self.status == NodeStatus.traveling:
             if printEnabled():
-                print("Move: id=" + str(self.id)
+                print("Move: id=" + str(self.identifier)
                       + ", x=" + str("%.2f" % self.x)
                       + ", y=" + str("%.2f" % self.y)
                       + ", speed=" + str(self.speed)
@@ -407,7 +403,7 @@ class Node:
             # Node also needs to be set to "paused" and randomize its traveling parameters
             newX, newY = self.determineBorderIntersection(self.x, self.y, newX, newY)
             if printEnabled():
-                print("Move: id=" + str(self.id)
+                print("Move: id=" + str(self.identifier)
                       + ", x=" + str("%.2f" % self.x)
                       + ", y=" + str("%.2f" % self.y)
                       + ", speed=" + str(self.speed)
@@ -418,7 +414,7 @@ class Node:
             self.x = newX
             self.y = newY
             self.pauseStatus()
-            #self.decrementRemainingPause()
+            # self.decrementRemainingPause()
 
         pass
 
@@ -437,19 +433,6 @@ class Node:
                 outputFile.write(row + "\n")
         return True
 
-    # I didnt do anything with these functions. I think they fall more in your area, but please let me know how I can help!
-
-    def learn(self):
-        # TODO
-        pass
-
-    def share(self, neighbor):
-        # TODO
-        pass
-
-    def evaluate(self):
-        # TODO
-        pass
 
 '''
         # Set some simulation parameters...
