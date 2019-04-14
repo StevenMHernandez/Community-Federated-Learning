@@ -11,6 +11,11 @@ from tensorflow.python.keras.optimizer_v2 import gradient_descent
 from tensorflow_federated import python as tff
 import random
 
+from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework import optimizer_utils
+
+from federated.optimizer_utils import server_update_model
+
 nest = tf.contrib.framework.nest
 
 np.random.seed(0)
@@ -20,13 +25,13 @@ tf.compat.v1.enable_v2_behavior()
 from Node import Node
 
 # Maximum number of nodes (the dataset can have upwards of 1000s of clients, and thus 1000s of nodes would be created)
-NODE_LIMIT = 2
+NODE_LIMIT = 20
 # Number of rounds that should occur @SERVER
 SIMULATION_NUM_ROUNDS = 10
 # Number of time instances that should occur per round
 SIMULATION_NUM_T_PER_ROUND = 10
 # Number of coordinator nodes to select per round
-NUM_COORDINATOR_NODES = 1
+NUM_COORDINATOR_NODES = 2
 
 #
 # Node Movement Variables
@@ -55,7 +60,9 @@ class Simulation:
             random.shuffle(node_ids)
             node_ids = node_ids[:NODE_LIMIT]
         for n_i in node_ids:
-            nodes.append(Node(n_i, TRANSMISSION_RADIUS, REGION_HEIGHT, REGION_WIDTH, MIN_SPEED, MAX_SPEED, MIN_PAUSE, MAX_PAUSE, MIN_TRAVEL, MAX_TRAVEL))
+            nodes.append(
+                Node(n_i, TRANSMISSION_RADIUS, REGION_HEIGHT, REGION_WIDTH, MIN_SPEED, MAX_SPEED, MIN_PAUSE, MAX_PAUSE,
+                     MIN_TRAVEL, MAX_TRAVEL))
         sample_batch = Simulation.create_sample_batch(train)
 
         # Create model graph
@@ -95,7 +102,8 @@ class Simulation:
                 for c in coordinators:
                     for n in nodes:
                         if c != n and c.sees(n):
-                            nodes_seen_by_coordinator[c].append(n)
+                            if n not in nodes_seen_by_coordinator[c]:
+                                nodes_seen_by_coordinator[c].append(n)
 
             # For all nodes seen by coordinator for a given round
             # learn together
@@ -108,8 +116,26 @@ class Simulation:
                     print('coordinator: {} round {:2d}, metrics={}'.format(c.identifier, round_num, metrics))
 
             # Now that the round is completed, we share the models from the coordinators to the SERVER for averaging.
-            # TODO: federated learning (SERVER from coordinators)
-            global_state = states[coordinators[0]]
+            for s in states:
+                state = states[s]
+                values = []
+                for x in state.model.trainable:
+                    values.append(x)
+
+                weights_delta = collections.OrderedDict({
+                    "dense/kernel": values[0],
+                    "dense/bias": values[1],
+                })
+
+                server_state = optimizer_utils.ServerState(
+                    model=model_utils.ModelWeights.from_tff_value(state.model),  # should be global state
+                    optimizer_state=list(state.optimizer_state))
+
+                global_state = server_update_model(
+                    server_state,
+                    weights_delta,
+                    model_fn=model_fn,
+                    optimizer_fn=lambda: gradient_descent.SGD(learning_rate=1.0))
 
         print(type(global_state))
         print(global_state)

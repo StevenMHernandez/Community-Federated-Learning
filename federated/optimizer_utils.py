@@ -23,17 +23,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import abc
 import collections
+import re
 
-import six
-from six.moves import zip
 import tensorflow as tf
 
-from tensorflow_federated.python import core as tff
-from tensorflow_federated.python.common_libs import anonymous_tuple
 from tensorflow_federated.python.common_libs import py_typecheck
 from tensorflow_federated.python.learning import model_utils
+from tensorflow_federated.python.learning.framework.optimizer_utils import ServerState
 from tensorflow_federated.python.tensorflow_libs import tensor_utils
 
 nest = tf.contrib.framework.nest
@@ -58,20 +55,32 @@ def _create_optimizer_and_server_state(model, optimizer):
            those variables.
     """
 
+    # "Hack"
+    # When models are created in the server_update_model() function,
+    # the model is labeled with an auto-incrementing name such as
+    # "dense_9/kernel" or "dense_9/bias". Because of this, we can't
+    # assert that they have the same structure, causing a failure.
+    def remove_nums(k, v):
+        new_k = re.sub('_\d*', '', k)
+        return new_k, v
+
+    model_weights = model_utils.ModelWeights(
+        collections.OrderedDict([remove_nums(k, v) for k, v in model.weights.trainable.items()]), model.weights.non_trainable)
+
     @tf.contrib.eager.defun(autograph=False)
     def apply_delta(delta):
-        """Applies `delta` to `model.weights`."""
-        nest.assert_same_structure(delta, model.weights.trainable)
+        """Applies `delta` to `model_weights`."""
+        nest.assert_same_structure(delta, model_weights.trainable)
         grads_and_vars = nest.map_structure(lambda x, v: (-1.0 * x, v),
                                             nest.flatten(delta),
-                                            nest.flatten(model.weights.trainable))
+                                            nest.flatten(model_weights.trainable))
         # N.B. This may create variables.
         optimizer.apply_gradients(grads_and_vars, name='server_update')
         return tf.constant(1)  # We have to return something.
 
     # Create a dummy input and trace apply_delta so that
     # we can determine the optimizer's variables.
-    weights_delta = nest.map_structure(tf.zeros_like, model.weights.trainable)
+    weights_delta = nest.map_structure(tf.zeros_like, model_weights.trainable)
 
     # TODO(b/109733734): We would like to call get_concrete_function,
     # but that does not currently work with structured inputs.
@@ -84,7 +93,7 @@ def _create_optimizer_and_server_state(model, optimizer):
     optimizer_vars = optimizer.variables()
 
     return apply_delta, ServerState(
-        model=model.weights, optimizer_state=optimizer_vars)
+        model=model_weights, optimizer_state=optimizer_vars)
 
 
 def server_update_model(current_server_state, weights_delta, model_fn,
