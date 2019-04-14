@@ -6,6 +6,14 @@ import enum
 # Sample of what my main method in the Simulation class looked like is at the end of this file!
 #
 
+# printEnabled - Function to control all print statements in Node.py
+#                Set printStatementsEnabled = False to disable print statements.
+#                   If disabled, only the exportResult method will print the resulting file name when called.
+def printEnabled():
+    printStatementsEnabled = True
+    return printStatementsEnabled
+
+# Enum to give nodes easy status setting/checking.
 class NodeStatus(enum.Enum):
     traveling = 1   # Default.
     paused = 2      # Temporary status.
@@ -44,18 +52,19 @@ class Node:
         (self.minSpeed, self.maxSpeed) = minSpeed, maxSpeed
         (self.minPause, self.maxPause) = minPause, maxPause
         (self.minTravel, self.maxTravel) = minTravel, maxTravel
-        print("Initialized: id=" + str(id)
-              + ", x=" + str("%.2f" % self.x)
-              + ", y=" + str("%.2f" % self.y)
-              + ", transmission=" + str(self.r)
-              + ", regionHeight=" + str(self.regionHeight)
-              + ", regionWidth=" + str(self.regionWidth)
-              + ", minSpeed=" + str(self.minSpeed)
-              + ", maxSpeed=" + str(self.maxSpeed)
-              + ", minPause=" + str(self.minPause)
-              + ", maxPause=" + str(self.maxPause)
-              + ", minTravel=" + str(self.minTravel)
-              + ", maxTravel=" + str(self.maxTravel))
+        if printEnabled():
+            print("Initialized: id=" + str(id)
+                  + ", x=" + str("%.2f" % self.x)
+                  + ", y=" + str("%.2f" % self.y)
+                  + ", transmission=" + str(self.r)
+                  + ", regionHeight=" + str(self.regionHeight)
+                  + ", regionWidth=" + str(self.regionWidth)
+                  + ", minSpeed=" + str(self.minSpeed)
+                  + ", maxSpeed=" + str(self.maxSpeed)
+                  + ", minPause=" + str(self.minPause)
+                  + ", maxPause=" + str(self.maxPause)
+                  + ", minTravel=" + str(self.minTravel)
+                  + ", maxTravel=" + str(self.maxTravel))
         self.randomizeMovementParameters()
 
     # initializeNodes - Returns a list of nodes with all values initialized.
@@ -99,21 +108,23 @@ class Node:
                         # Currently this string consists of... time, node1Id, node2Id
                         communicationString = str(currentTime) + "," + str(nodeOne.id) + "," + str(nodeTwo.id)
                         communicationStringList.append(communicationString)
-                        print("Communication: time=" + str(currentTime)
-                                            + ", id=" + str(nodeOne.id)
-                                            + ", id=" + str(nodeTwo.id)
-                                            + ", distance=" + str("%.2f" % distance)
-                                            + ", transmissionRadius=" + str(nodeOne.transmissionRadius)
-                                            + ", regionSize=" + str(nodeOne.regionHeight) + "x" + str(nodeOne.regionWidth)
-                                            + ", communication=True")
+                        if printEnabled():
+                            print("Communication: time=" + str(currentTime)
+                                                + ", id=" + str(nodeOne.id)
+                                                + ", id=" + str(nodeTwo.id)
+                                                + ", distance=" + str("%.2f" % distance)
+                                                + ", transmissionRadius=" + str(nodeOne.transmissionRadius)
+                                                + ", regionSize=" + str(nodeOne.regionHeight) + "x" + str(nodeOne.regionWidth)
+                                                + ", communication=True")
                     else:
-                        print("Communication: time=" + str(currentTime)
-                              + ", id=" + str(nodeOne.id)
-                              + ", id=" + str(nodeTwo.id)
-                              + ", distance=" + str("%.2f" % distance)
-                              + ", transmissionRadius=" + str(nodeOne.transmissionRadius)
-                              + ", regionSize=" + str(nodeOne.regionHeight) + "x" + str(nodeOne.regionWidth)
-                              + ", communication=False")
+                        if printEnabled():
+                            print("Communication: time=" + str(currentTime)
+                                  + ", id=" + str(nodeOne.id)
+                                  + ", id=" + str(nodeTwo.id)
+                                  + ", distance=" + str("%.2f" % distance)
+                                  + ", transmissionRadius=" + str(nodeOne.transmissionRadius)
+                                  + ", regionSize=" + str(nodeOne.regionHeight) + "x" + str(nodeOne.regionWidth)
+                                  + ", communication=False")
         return communicationStringList
 
     # getRandomLocation - Generates a random coordinate within the simulation region.
@@ -133,11 +144,12 @@ class Node:
         self.speed = self.setSpeed()
         (self.initialPause, self.remainingPause) = self.setPause()
         (self.initialTravelTime, self.remainingTravelTime) = self.setTravel()
-        print("Randomize: id=" + str(self.id)
-              + ", angle=" + str("%.2f" % self.angle)
-              + ", speed=" + str(self.speed)
-              + ", pause=" + str(self.initialPause)
-              + ", travel=" + str(self.initialTravelTime))
+        if printEnabled():
+            print("Randomize: id=" + str(self.id)
+                  + ", angle=" + str("%.2f" % self.angle)
+                  + ", speed=" + str(self.speed)
+                  + ", pause=" + str(self.initialPause)
+                  + ", travel=" + str(self.initialTravelTime))
 
     # My naming of functions was atrocious here, but I was out of ideas.
     # Maybe refactor these later...
@@ -232,7 +244,7 @@ class Node:
 
         div = det(xdiff, ydiff)
         if div == 0:
-            raise Exception('lines do not intersect')
+            raise Exception('No intersection!')
 
         d = (det(*line1), det(*line2))
         x = det(d, xdiff) / div
@@ -316,26 +328,28 @@ class Node:
 
         # Check if the new points are within the region
         if self.exists(newX, newY):
-            print("Move: id=" + str(self.id)
-                  + ", x=" + str("%.2f" % self.x)
-                  + ", y=" + str("%.2f" % self.y)
-                  + ", speed=" + str(self.speed)
-                  + ", newX=" + str("%.2f" % newX)
-                  + ", newY=" + str("%.2f" % newY)
-                  + ", exists=True")
+            if printEnabled():
+                print("Move: id=" + str(self.id)
+                      + ", x=" + str("%.2f" % self.x)
+                      + ", y=" + str("%.2f" % self.y)
+                      + ", speed=" + str(self.speed)
+                      + ", newX=" + str("%.2f" % newX)
+                      + ", newY=" + str("%.2f" % newY)
+                      + ", exists=True")
             self.x = newX
             self.y = newY
         else:
             # Need to set nodes point to intersection of path and the region border
             # Node also needs to be set to "paused" and randomize its traveling parameters
             newX, newY = self.determineBorderIntersection(self.x, self.y, newX, newY)
-            print("Move: id=" + str(self.id)
-                  + ", x=" + str("%.2f" % self.x)
-                  + ", y=" + str("%.2f" % self.y)
-                  + ", speed=" + str(self.speed)
-                  + ", newX=" + str("%.2f" % newX)
-                  + ", newY=" + str("%.2f" % newY)
-                  + ", exists=False")
+            if printEnabled():
+                print("Move: id=" + str(self.id)
+                      + ", x=" + str("%.2f" % self.x)
+                      + ", y=" + str("%.2f" % self.y)
+                      + ", speed=" + str(self.speed)
+                      + ", newX=" + str("%.2f" % newX)
+                      + ", newY=" + str("%.2f" % newY)
+                      + ", exists=False")
             self.x = newX
             self.y = newY
             self.pauseStatus()
@@ -353,15 +367,17 @@ class Node:
     def move(self):
         if self.status == NodeStatus.paused and self.pauseRemaining():
             self.decrementRemainingPause()
-            print("Pause: id=" + str(self.id)
-                    + ", pauseRemaining=" + str(self.remainingPause))
+            if printEnabled():
+                print("Pause: id=" + str(self.id)
+                        + ", pauseRemaining=" + str(self.remainingPause))
             return
 
         if self.status == NodeStatus.paused and not self.pauseRemaining():
             self.travelStatus()
             self.randomizeMovementParameters()
             self.moveWithoutTimePenalty()
-            print("Transition: id=" + str(self.id))
+            if printEnabled():
+                print("Transition: id=" + str(self.id))
             return
 
         angleInRadians = math.radians(self.angle)
@@ -374,14 +390,15 @@ class Node:
 
         # Check if the new points are within the region
         if self.exists(newX, newY) and self.travelRemaining() and self.status == NodeStatus.traveling:
-            print("Move: id=" + str(self.id)
-                  + ", x=" + str("%.2f" % self.x)
-                  + ", y=" + str("%.2f" % self.y)
-                  + ", speed=" + str(self.speed)
-                  + ", angle=" + str("%.2f" % self.angle)
-                  + ", newX=" + str("%.2f" % newX)
-                  + ", newY=" + str("%.2f" % newY)
-                  + ", exists=True")
+            if printEnabled():
+                print("Move: id=" + str(self.id)
+                      + ", x=" + str("%.2f" % self.x)
+                      + ", y=" + str("%.2f" % self.y)
+                      + ", speed=" + str(self.speed)
+                      + ", angle=" + str("%.2f" % self.angle)
+                      + ", newX=" + str("%.2f" % newX)
+                      + ", newY=" + str("%.2f" % newY)
+                      + ", exists=True")
             self.x = newX
             self.y = newY
             self.decrementRemainingTravel()
@@ -389,14 +406,15 @@ class Node:
             # Need to set nodes point to intersection of path and the region border
             # Node also needs to be set to "paused" and randomize its traveling parameters
             newX, newY = self.determineBorderIntersection(self.x, self.y, newX, newY)
-            print("Move: id=" + str(self.id)
-                  + ", x=" + str("%.2f" % self.x)
-                  + ", y=" + str("%.2f" % self.y)
-                  + ", speed=" + str(self.speed)
-                  + ", angle=" + str("%.2f" % self.angle)
-                  + ", newX=" + str("%.2f" % newX)
-                  + ", newY=" + str("%.2f" % newY)
-                  + ", exists=False")
+            if printEnabled():
+                print("Move: id=" + str(self.id)
+                      + ", x=" + str("%.2f" % self.x)
+                      + ", y=" + str("%.2f" % self.y)
+                      + ", speed=" + str(self.speed)
+                      + ", angle=" + str("%.2f" % self.angle)
+                      + ", newX=" + str("%.2f" % newX)
+                      + ", newY=" + str("%.2f" % newY)
+                      + ", exists=False")
             self.x = newX
             self.y = newY
             self.pauseStatus()
