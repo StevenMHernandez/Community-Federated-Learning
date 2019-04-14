@@ -82,6 +82,9 @@ class Simulation:
             # Run simulation for SIMULATION_NUM_T_PER_ROUND times instances
             # noting which nodes were seen by coordinators
             nodes_seen_by_coordinator = {}
+            # The coordinator is always seen so that learning occurs at a minimum for the coordinator node's dataset
+            for c in coordinators:
+                nodes_seen_by_coordinator[c] = [c]
             for t in range(1, SIMULATION_NUM_T_PER_ROUND + 1):
                 # Move all nodes once
                 for n in nodes:
@@ -92,10 +95,7 @@ class Simulation:
                 for c in coordinators:
                     for n in nodes:
                         if c != n and c.sees(n):
-                            if c not in nodes_seen_by_coordinator:
-                                nodes_seen_by_coordinator[c] = []
-                            if n not in nodes_seen_by_coordinator[c]:
-                                nodes_seen_by_coordinator[c].append(n)
+                            nodes_seen_by_coordinator[c].append(n)
 
             # For all nodes seen by coordinator for a given round
             # learn together
