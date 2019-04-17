@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import collections
 import math
+import os
 import time
 
 from six.moves import range
@@ -51,6 +52,12 @@ class Simulation:
     @staticmethod
     def main():
         start = time.time()
+
+        # Create directory to store results
+        experiment_storage = "./storage/experiments/{}/".format(time.time())
+        os.makedirs(experiment_storage)
+        f_coordinator = open(experiment_storage + "coordinator_metrics.csv", "a")
+        f_coordinator.write("coordinator_id,round_num,num_neighboors,accuracy,loss,\n")
 
         # Initialize nodes based on the given dataset
         nodes = []
@@ -114,6 +121,11 @@ class Simulation:
                     states[c], metrics = Simulation.fl_c_to_n(train, nodes_seen_by_coordinator[c], states[c],
                                                               iterative_processes[c])
                     print('coordinator: {} round {:2d}, metrics={}'.format(c.identifier, round_num, metrics))
+                    f_coordinator.write("{},{},{},{},{}\n".format(c.identifier,
+                                                               round_num,
+                                                               len(nodes_seen_by_coordinator[c]),
+                                                               metrics.sparse_categorical_accuracy,
+                                                               metrics.loss))
 
             # Now that the round is completed, we share the models from the coordinators to the SERVER for averaging.
             for s in states:
@@ -140,7 +152,8 @@ class Simulation:
         print(type(global_state))
         print(global_state)
 
-        # TODO: Evaluation
+        # TODO: Final global evaluation
+        f_coordinator.close()
         end = time.time()
         time_taken = end - start
         print("Simulation took: {}min {}s".format(math.floor(time_taken / 60), time_taken % 60))
