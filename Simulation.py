@@ -15,6 +15,7 @@ import random
 from tensorflow_federated.python.learning import model_utils
 from tensorflow_federated.python.learning.framework import optimizer_utils
 
+from MnistModel import MnistModel, MnistTrainableModel
 from federated.optimizer_utils import server_update_model
 
 nest = tf.contrib.framework.nest
@@ -28,11 +29,11 @@ from Node import Node
 # Maximum number of nodes (the dataset can have upwards of 1000s of clients, and thus 1000s of nodes would be created)
 NODE_LIMIT = 20
 # Number of rounds that should occur @SERVER
-SIMULATION_NUM_ROUNDS = 10
+SIMULATION_NUM_ROUNDS = 1
 # Number of time instances that should occur per round
 SIMULATION_NUM_T_PER_ROUND = 10
 # Number of coordinator nodes to select per round
-NUM_COORDINATOR_NODES = 2
+NUM_COORDINATOR_NODES = 1
 
 #
 # Node Movement Variables
@@ -57,7 +58,9 @@ class Simulation:
         experiment_storage = "./storage/experiments/{}/".format(time.time())
         os.makedirs(experiment_storage)
         f_coordinator = open(experiment_storage + "coordinator_metrics.csv", "a")
-        f_coordinator.write("coordinator_id,round_num,num_neighboors,accuracy,loss,\n")
+        f_coordinator.write("coordinator_id,round_num,num_neighbors,accuracy,loss\n")
+        f_global = open(experiment_storage + "global_metrics.csv", "a")
+        f_global.write("round_num,accuracy,loss\n")
 
         # Initialize nodes based on the given dataset
         nodes = []
@@ -70,14 +73,15 @@ class Simulation:
             nodes.append(
                 Node(n_i, TRANSMISSION_RADIUS, REGION_HEIGHT, REGION_WIDTH, MIN_SPEED, MAX_SPEED, MIN_PAUSE, MAX_PAUSE,
                      MIN_TRAVEL, MAX_TRAVEL))
-        sample_batch = Simulation.create_sample_batch(train)
+
+        test_node_ids = test.client_ids
+        federated_test_data = Simulation.make_federated_data(test, test_node_ids)
 
         # Create model graph
-        def model_fn():
-            keras_model = Simulation.create_compiled_keras_model()
-            return tff.learning.from_compiled_keras_model(keras_model, sample_batch)
+        model_fn = MnistTrainableModel
 
         # Create global-model state (model at the server)
+        evaluation = tff.learning.build_federated_evaluation(MnistModel)
         iterative_process = tff.learning.build_federated_averaging_process(model_fn)
         global_state = iterative_process.initialize()
 
@@ -121,10 +125,8 @@ class Simulation:
                     states[c], metrics = Simulation.fl_c_to_n(train, nodes_seen_by_coordinator[c], states[c],
                                                               iterative_processes[c])
                     print('coordinator: {} round {:2d}, metrics={}'.format(c.identifier, round_num, metrics))
-                    f_coordinator.write("{},{},{},{},{}\n".format(c.identifier,
-                                                               round_num,
-                                                               len(nodes_seen_by_coordinator[c]),
-                                                               metrics.sparse_categorical_accuracy,
+                    f_coordinator.write("{},{},{}\n".format(round_num,
+                                                               metrics.accuracy,
                                                                metrics.loss))
 
             # Now that the round is completed, we share the models from the coordinators to the SERVER for averaging.
@@ -135,12 +137,12 @@ class Simulation:
                     values.append(x)
 
                 weights_delta = collections.OrderedDict({
-                    "dense/kernel": values[0],
-                    "dense/bias": values[1],
+                    "weights": values[0],
+                    "bias": values[1],
                 })
 
                 server_state = optimizer_utils.ServerState(
-                    model=model_utils.ModelWeights.from_tff_value(state.model),  # should be global state
+                    model=model_utils.ModelWeights.from_tff_value(global_state.model),
                     optimizer_state=list(state.optimizer_state))
 
                 global_state = server_update_model(
@@ -149,11 +151,18 @@ class Simulation:
                     model_fn=model_fn,
                     optimizer_fn=lambda: gradient_descent.SGD(learning_rate=1.0))
 
+            # Evaluate Global Model
+            metrics = evaluation(global_state.model, federated_test_data)
+            print(metrics)
+            f_global.write("{},{},{}\n".format(round_num,
+                                               metrics.accuracy,
+                                               metrics.loss))
+
         print(type(global_state))
         print(global_state)
 
-        # TODO: Final global evaluation
         f_coordinator.close()
+        f_global.close()
         end = time.time()
         time_taken = end - start
         print("Simulation took: {}min {}s".format(math.floor(time_taken / 60), time_taken % 60))
@@ -191,32 +200,6 @@ class Simulation:
     @staticmethod
     def make_federated_data(client_data, client_ids):
         return [Simulation.preprocess(client_data.create_tf_dataset_for_client(x)) for x in client_ids]
-
-    @staticmethod
-    def create_sample_batch(train):
-        example_dataset = train.create_tf_dataset_for_client(
-            train.client_ids[0])
-
-        preprocessed_example_dataset = Simulation.preprocess(example_dataset)
-
-        return nest.map_structure(lambda x: x.numpy(), iter(preprocessed_example_dataset).next())
-
-    @staticmethod
-    def create_compiled_keras_model():
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Dense(10, activation=tf.nn.softmax,
-                                  kernel_initializer='zeros', input_shape=(784,))
-        ])
-
-        def loss_fn(y_true, y_pred):
-            return tf.reduce_mean(
-                tf.keras.losses.sparse_categorical_crossentropy(y_true, y_pred))
-
-        model.compile(
-            loss=loss_fn,
-            optimizer=gradient_descent.SGD(learning_rate=0.02),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-        return model
 
 
 if __name__ == '__main__':
