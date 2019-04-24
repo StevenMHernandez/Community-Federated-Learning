@@ -27,13 +27,13 @@ tf.compat.v1.enable_v2_behavior()
 from Node import Node
 
 # Maximum number of nodes (the dataset can have upwards of 1000s of clients, and thus 1000s of nodes would be created)
-NODE_LIMIT = 20
+NODE_LIMIT = 10  # 100
 # Number of rounds that should occur @SERVER
-SIMULATION_NUM_ROUNDS = 1
+SIMULATION_NUM_ROUNDS = 3
 # Number of time instances that should occur per round
 SIMULATION_NUM_T_PER_ROUND = 10
 # Number of coordinator nodes to select per round
-NUM_COORDINATOR_NODES = 1
+NUM_COORDINATOR_NODES = 2
 
 #
 # Node Movement Variables
@@ -57,10 +57,18 @@ class Simulation:
         # Create directory to store results
         experiment_storage = "./storage/experiments/{}/".format(time.time())
         os.makedirs(experiment_storage)
+
+        # File storing metrics at each coordinator node
         f_coordinator = open(experiment_storage + "coordinator_metrics.csv", "a")
         f_coordinator.write("coordinator_id,round_num,num_neighbors,accuracy,loss\n")
+
+        # File storing metrics on our global model
         f_global = open(experiment_storage + "global_metrics.csv", "a")
         f_global.write("round_num,accuracy,loss\n")
+
+        # File storing metrics on the standard federated learning
+        f_global_regular = open(experiment_storage + "global_metrics_regular.csv", "a")
+        f_global_regular.write("round_num,accuracy,loss\n")
 
         # Initialize nodes based on the given dataset
         nodes = []
@@ -83,7 +91,9 @@ class Simulation:
         # Create global-model state (model at the server)
         evaluation = tff.learning.build_federated_evaluation(MnistModel)
         iterative_process = tff.learning.build_federated_averaging_process(model_fn)
+        iterative_process_regular = tff.learning.build_federated_averaging_process(model_fn)
         global_state = iterative_process.initialize()
+        global_state_regular = iterative_process.initialize()
 
         # Run simulation a given number of rounds
         for round_num in range(1, SIMULATION_NUM_ROUNDS + 1):
@@ -122,14 +132,15 @@ class Simulation:
                 if c in nodes_seen_by_coordinator:
                     print("Round {}, coordinator {} learns from [{}]".format(round_num, c.identifier, ",".join(
                         map(lambda x: x.identifier, nodes_seen_by_coordinator[c]))))
-                    states[c], metrics = Simulation.fl_c_to_n(train, nodes_seen_by_coordinator[c], states[c],
+                    states[c], metrics = Simulation.fed_learn(train, nodes_seen_by_coordinator[c], states[c],
                                                               iterative_processes[c])
                     print('coordinator: {} round {:2d}, metrics={}'.format(c.identifier, round_num, metrics))
                     f_coordinator.write("{},{},{}\n".format(round_num,
-                                                               metrics.accuracy,
-                                                               metrics.loss))
+                                                            metrics.accuracy,
+                                                            metrics.loss))
 
-            # Now that the round is completed, we share the models from the coordinators to the SERVER for averaging.
+            # Determine the weights delta for the round from the coordinators compared to the SERVER.
+            client_weights_deltas = []
             for s in states:
                 state = states[s]
                 values = []
@@ -141,34 +152,50 @@ class Simulation:
                     "bias": values[1],
                 })
 
-                server_state = optimizer_utils.ServerState(
-                    model=model_utils.ModelWeights.from_tff_value(global_state.model),
-                    optimizer_state=list(state.optimizer_state))
+                client_weights_deltas.append(weights_delta)
 
-                global_state = server_update_model(
-                    server_state,
-                    weights_delta,
-                    model_fn=model_fn,
-                    optimizer_fn=lambda: gradient_descent.SGD(learning_rate=1.0))
+            # Now that the round is completed, we share the models from the coordinators to the SERVER for averaging.
+            weights_per_coordinator = []
+            bias_per_coordinator = []
+            for c_i in client_weights_deltas:
+                weights_per_coordinator.append(c_i['weights'])
+                bias_per_coordinator.append(c_i['bias'])
+            new_weights_deltas = tf.math.reduce_mean(weights_per_coordinator, 0).numpy()
+            new_bias_deltas = tf.math.reduce_mean(bias_per_coordinator, 0).numpy()
 
-            # Evaluate Global Model
-            metrics = evaluation(global_state.model, federated_test_data)
-            print(metrics)
-            f_global.write("{},{},{}\n".format(round_num,
-                                               metrics.accuracy,
-                                               metrics.loss))
+            # Bad way to set these variables, but it works for a proof of concept at least.
+            for i in range(0,len(new_weights_deltas)):
+                global_state.model.trainable.weights[i] = new_weights_deltas[i]
+            for i in range(0, len(new_bias_deltas)):
+                global_state.model.trainable.bias[i] = new_bias_deltas[i]
+
+            # # Evaluate Global Model (our method)
+            # metrics = evaluation(global_state.model, federated_test_data)
+            # print(metrics)
+            # f_global.write("{},{},{}\n".format(round_num,
+            #                                    metrics.accuracy,
+            #                                    metrics.loss))
+            #
+            # # Evaluate Global Model (regular federated learning on coordinator nodes)
+            # metrics = evaluation(global_state_regular.model, federated_test_data)
+            # print(metrics)
+            # f_global.write("{},{},{}\n".format(round_num,
+            #                                    metrics.accuracy,
+            #                                    metrics.loss))
 
         print(type(global_state))
         print(global_state)
 
         f_coordinator.close()
         f_global.close()
+        f_global_regular.close()
+
         end = time.time()
         time_taken = end - start
         print("Simulation took: {}min {}s".format(math.floor(time_taken / 60), time_taken % 60))
 
     @staticmethod
-    def fl_c_to_n(train, nodes, state, iterative_process):
+    def fed_learn(train, nodes, state, iterative_process):
         """
         Run Federated Learning between Coordinators to mobile Nodes
 
