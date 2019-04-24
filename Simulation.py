@@ -184,6 +184,8 @@ class Simulation:
                                                metrics.accuracy,
                                                metrics.loss))
 
+            global_state_standard, metrics = Simulation.fed_learn(train, coordinators, global_state_standard, iterative_process)
+
             # Evaluate Global Model (standard federated learning on coordinator nodes)
             metrics = evaluation(global_state_standard.model, federated_test_data)
             print("Standard method:", metrics)
