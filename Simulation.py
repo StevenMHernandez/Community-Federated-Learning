@@ -109,10 +109,8 @@ class Simulation:
             coordinators = nodes[0:NUM_COORDINATOR_NODES]
 
             # Initiate the coordinator's state (local-modal) based on the global state (global-state)
-            iterative_processes = {}
             states = {}
             for c in coordinators:
-                iterative_processes[c] = iterative_process
                 states[c] = global_state
 
             # Run simulation for SIMULATION_NUM_T_PER_ROUND times instances
@@ -140,8 +138,7 @@ class Simulation:
                 if c in nodes_seen_by_coordinator:
                     print("Round {}, coordinator {} learns from [{}]".format(round_num, c.identifier, ",".join(
                         map(lambda x: x.identifier, nodes_seen_by_coordinator[c]))))
-                    states[c], metrics = Simulation.fed_learn(train, nodes_seen_by_coordinator[c], states[c],
-                                                              iterative_processes[c])
+                    states[c], metrics = Simulation.fed_learn(train, nodes_seen_by_coordinator[c], states[c], iterative_process)
                     print('coordinator: {} round {:2d}, metrics={}'.format(c.identifier, round_num, metrics))
                     f_coordinator.write("{},{},{}\n".format(round_num,
                                                             metrics.accuracy,
