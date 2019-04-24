@@ -27,15 +27,15 @@ tf.compat.v1.enable_v2_behavior()
 from Node import Node
 
 # Maximum number of nodes (the dataset can have upwards of 1000s of clients, and thus 1000s of nodes would be created)
-NODE_LIMIT = 10  # 100
+NODE_LIMIT = 100
 # Maximum number of TEST nodes
-TEST_NODE_LIMIT = 10  # 100
+TEST_NODE_LIMIT = 100
 # Number of rounds that should occur @SERVER
-SIMULATION_NUM_ROUNDS = 3
+SIMULATION_NUM_ROUNDS = 100 # 100
 # Number of time instances that should occur per round
 SIMULATION_NUM_T_PER_ROUND = 10
 # Number of coordinator nodes to select per round
-NUM_COORDINATOR_NODES = 2
+NUM_COORDINATOR_NODES = 5
 
 #
 # Node Movement Variables
@@ -140,7 +140,9 @@ class Simulation:
                         map(lambda x: x.identifier, nodes_seen_by_coordinator[c]))))
                     states[c], metrics = Simulation.fed_learn(train, nodes_seen_by_coordinator[c], states[c], iterative_process)
                     print('coordinator: {} round {:2d}, metrics={}'.format(c.identifier, round_num, metrics))
-                    f_coordinator.write("{},{},{}\n".format(round_num,
+                    f_coordinator.write("{},{},{},{},{}\n".format(c,
+                                                            round_num,
+                                                            len(nodes_seen_by_coordinator[c]),
                                                             metrics.accuracy,
                                                             metrics.loss))
 
