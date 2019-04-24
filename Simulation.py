@@ -28,6 +28,8 @@ from Node import Node
 
 # Maximum number of nodes (the dataset can have upwards of 1000s of clients, and thus 1000s of nodes would be created)
 NODE_LIMIT = 10  # 100
+# Maximum number of TEST nodes
+TEST_NODE_LIMIT = 10  # 100
 # Number of rounds that should occur @SERVER
 SIMULATION_NUM_ROUNDS = 3
 # Number of time instances that should occur per round
@@ -67,8 +69,8 @@ class Simulation:
         f_global.write("round_num,accuracy,loss\n")
 
         # File storing metrics on the standard federated learning
-        f_global_regular = open(experiment_storage + "global_metrics_regular.csv", "a")
-        f_global_regular.write("round_num,accuracy,loss\n")
+        f_global_standard = open(experiment_storage + "global_metrics_standard.csv", "a")
+        f_global_standard.write("round_num,accuracy,loss\n")
 
         # Initialize nodes based on the given dataset
         nodes = []
@@ -83,17 +85,23 @@ class Simulation:
                      MIN_TRAVEL, MAX_TRAVEL))
 
         test_node_ids = test.client_ids
+        if len(test_node_ids) > TEST_NODE_LIMIT:
+            random.shuffle(node_ids)
+            test_node_ids = node_ids[:TEST_NODE_LIMIT]
         federated_test_data = Simulation.make_federated_data(test, test_node_ids)
 
         # Create model graph
         model_fn = MnistTrainableModel
 
-        # Create global-model state (model at the server)
+        # Federated evaluation computation
         evaluation = tff.learning.build_federated_evaluation(MnistModel)
+        # Federated learning process computation
         iterative_process = tff.learning.build_federated_averaging_process(model_fn)
-        iterative_process_regular = tff.learning.build_federated_averaging_process(model_fn)
+
+        # Global state for OUR method
         global_state = iterative_process.initialize()
-        global_state_regular = iterative_process.initialize()
+        # Global state for the standard federated learning method
+        global_state_standard = iterative_process.initialize()
 
         # Run simulation a given number of rounds
         for round_num in range(1, SIMULATION_NUM_ROUNDS + 1):
@@ -164,31 +172,31 @@ class Simulation:
             new_bias_deltas = tf.math.reduce_mean(bias_per_coordinator, 0).numpy()
 
             # Bad way to set these variables, but it works for a proof of concept at least.
-            for i in range(0,len(new_weights_deltas)):
+            for i in range(0, len(new_weights_deltas)):
                 global_state.model.trainable.weights[i] = new_weights_deltas[i]
             for i in range(0, len(new_bias_deltas)):
                 global_state.model.trainable.bias[i] = new_bias_deltas[i]
 
-            # # Evaluate Global Model (our method)
-            # metrics = evaluation(global_state.model, federated_test_data)
-            # print(metrics)
-            # f_global.write("{},{},{}\n".format(round_num,
-            #                                    metrics.accuracy,
-            #                                    metrics.loss))
-            #
-            # # Evaluate Global Model (regular federated learning on coordinator nodes)
-            # metrics = evaluation(global_state_regular.model, federated_test_data)
-            # print(metrics)
-            # f_global.write("{},{},{}\n".format(round_num,
-            #                                    metrics.accuracy,
-            #                                    metrics.loss))
+            # Evaluate Global Model (our method)
+            metrics = evaluation(global_state.model, federated_test_data)
+            print("Our method:", metrics)
+            f_global.write("{},{},{}\n".format(round_num,
+                                               metrics.accuracy,
+                                               metrics.loss))
+
+            # Evaluate Global Model (standard federated learning on coordinator nodes)
+            metrics = evaluation(global_state_standard.model, federated_test_data)
+            print("Standard method:", metrics)
+            f_global_standard.write("{},{},{}\n".format(round_num,
+                                                        metrics.accuracy,
+                                                        metrics.loss))
 
         print(type(global_state))
         print(global_state)
 
         f_coordinator.close()
         f_global.close()
-        f_global_regular.close()
+        f_global_standard.close()
 
         end = time.time()
         time_taken = end - start
